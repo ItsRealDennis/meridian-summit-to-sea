@@ -23,6 +23,14 @@ export const WORLD = {
 // Sun sits low to the east — a first-light sun for the whole film.
 export const SUN_DIR = new THREE.Vector3(0.62, 0.16, -0.42).normalize();
 
+// The vessel — shared by the ship itself, the camera flyby, and the
+// ocean's hull foam. Bow points seaward (-z).
+export const VESSEL = {
+  pos: new THREE.Vector3(20, 0, -1350),
+  yaw: THREE.MathUtils.degToRad(80),
+  length: 108,
+};
+
 // Shared uniforms — every material links to these same objects.
 export const uniforms = {
   uTime:     { value: 0 },

@@ -90,7 +90,10 @@ fonts/              woff2 subsets + OFL licences
 | Jost (variable) | Google Fonts | SIL OFL 1.1 — `fonts/OFL-Jost.txt` |
 | Cormorant Garamond | Google Fonts | SIL OFL 1.1 — `fonts/OFL-CormorantGaramond.txt` |
 | `assets/vessel.glb` | AI-generated for this project (Higgsfield image→3D from an AI-generated reference; WebP-optimised). Loads as a progressive enhancement — the procedural bulker remains the fallback | project asset |
+| `assets/peak.glb` | AI-generated sister massifs on the horizon (Higgsfield image→3D), progressive enhancement | project asset |
+| `assets/tex-snow.jpg`, `assets/tex-rock.jpg` | AI-generated tileable surface detail (Higgsfield), luminance-blended into the terrain shader | project asset |
 | `assets/og.jpg` | AI-generated dawn photograph (Higgsfield), composited with the site's own typography | project asset |
+| `assets/loader.mp4` | AI-generated ambient dawn footage (Higgsfield image→video from the same dawn still), behind the loader | project asset |
 | Everything else | generated in this repository (terrain, clouds, ocean, audio, favicon) | — |
 
 MERIDIAN is a fictional company created for a benchmark. No real

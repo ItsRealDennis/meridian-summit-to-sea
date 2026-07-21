@@ -15,9 +15,10 @@ const EYE = new THREE.CatmullRomCurve3([
   new THREE.Vector3(-206, 188, -136),  // the held breath
   new THREE.Vector3(-150, 148, -365),  // breaking through
   new THREE.Vector3(-70, 96, -585),    // the reveal — open water
-  new THREE.Vector3(-2, 48, -830),     // long glide
-  new THREE.Vector3(44, 26, -1000),    // low over the water
-  new THREE.Vector3(58, 20, -1130),    // alongside
+  new THREE.Vector3(-30, 46, -860),    // long glide toward her
+  new THREE.Vector3(-34, 20, -1120),   // dropping to deck height
+  new THREE.Vector3(-36, 17, -1250),   // the flyby — alongside the hull
+  new THREE.Vector3(-38, 21, -1335),   // settling abeam her midship
 ], false, 'centripetal');
 
 const GAZE = new THREE.CatmullRomCurve3([
@@ -28,10 +29,10 @@ const GAZE = new THREE.CatmullRomCurve3([
   new THREE.Vector3(-110, 175, -310),
   new THREE.Vector3(-70, 128, -470),
   new THREE.Vector3(-14, 66, -780),
-  new THREE.Vector3(16, 34, -1020),
-  new THREE.Vector3(-28, 24, -1180),
-  new THREE.Vector3(-52, 18, -1365),   // the vessel
-  new THREE.Vector3(-62, 36, -1780),   // past her, to the horizon
+  new THREE.Vector3(24, 34, -1080),    // she appears ahead
+  new THREE.Vector3(34, 15, -1300),    // eyes on her hull
+  new THREE.Vector3(30, 13, -1370),    // tracking along the plating
+  new THREE.Vector3(26, 25, -1760),    // released past her bow, horizon
 ], false, 'centripetal');
 
 const eyeP = new THREE.Vector3();

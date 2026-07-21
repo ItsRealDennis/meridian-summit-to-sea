@@ -82,9 +82,18 @@ export function createScroll() {
     const t0 = performance.now();
     if (state.animating) cancelAnimationFrame(state.animating);
     const ease = (t) => 1 - Math.pow(1 - t, 3.2);
+    let lastSetY = null;
     const step = (now) => {
+      // someone else moved the page (scrollbar drag, keyboard, a jump)
+      // — their hand wins, immediately
+      if (lastSetY !== null && Math.abs(window.scrollY - lastSetY) > 6) {
+        state.animating = null;
+        return;
+      }
       const t = Math.min(1, (now - t0) / (dur * 1000));
-      window.scrollTo(0, startY + (endY - startY) * ease(t));
+      const y = startY + (endY - startY) * ease(t);
+      window.scrollTo(0, y);
+      lastSetY = y;
       if (t < 1) state.animating = requestAnimationFrame(step);
       else state.animating = null;
     };

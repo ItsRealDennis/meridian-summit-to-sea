@@ -4,8 +4,17 @@
 // sits on the water it appears to float in.
 
 import * as THREE from 'three';
-import { uniforms } from '../config.js';
+import { uniforms, VESSEL } from '../config.js';
 import { ATMO_GLSL, NOISE_GLSL } from '../shaders/chunks.js';
+
+// hull segment endpoints for the foam that breaks against her plating
+const HULL_DIR = new THREE.Vector2(Math.cos(VESSEL.yaw), -Math.sin(VESSEL.yaw));
+const HULL_A = new THREE.Vector2(
+  VESSEL.pos.x + HULL_DIR.x * VESSEL.length * 0.46,
+  VESSEL.pos.z + HULL_DIR.y * VESSEL.length * 0.46);
+const HULL_B = new THREE.Vector2(
+  VESSEL.pos.x - HULL_DIR.x * VESSEL.length * 0.46,
+  VESSEL.pos.z - HULL_DIR.y * VESSEL.length * 0.46);
 
 // [dirX, dirZ, amplitude, wavelength, steepness]
 export const WAVES = [
@@ -126,6 +135,19 @@ export function createOcean(highDetail = true) {
         float streak = fbm2b(vec2(vWp.x * 0.016, vWp.z * 0.055) + d1 * 0.4);
         float foam = smoothstep(0.52, 0.95, vCrest * 0.5 + 0.5 + (d2 - 0.5) * 0.55)
                    * smoothstep(0.35, 0.75, streak) * nearW;
+
+        // the sea works against her hull — a breathing collar of foam
+        vec2 ha = vec2(${HULL_A.x.toFixed(1)}, ${HULL_A.y.toFixed(1)});
+        vec2 hb = vec2(${HULL_B.x.toFixed(1)}, ${HULL_B.y.toFixed(1)});
+        vec2 pa = vWp.xz - ha, ba = hb - ha;
+        float hSeg = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        float hd = length(pa - ba * hSeg);
+        float surge = 0.6 + 0.4 * sin(t * 0.9 + vWp.x * 0.3 + vWp.z * 0.21);
+        float hullFoam = smoothstep(16.5, 9.8, hd) * smoothstep(6.5, 9.8, hd)
+                       * smoothstep(0.3, 0.7, fbm2b(vWp.xz * 0.35 + t * 0.05))
+                       * surge * actMarine(uProgress);
+        foam = max(foam, hullFoam * 0.85);
+
         vec3 foamCol = horizonCol(uProgress) * 1.06;
         col = mix(col, foamCol, foam * 0.6);
 

@@ -4,53 +4,16 @@
 // not on it.
 
 import * as THREE from 'three';
-import { uniforms } from '../config.js';
+import { uniforms, VESSEL } from '../config.js';
 import { ATMO_GLSL } from '../shaders/chunks.js';
 import { waveSample } from './ocean.js';
 
-export const VESSEL_POS = new THREE.Vector3(16, 0, -1390);
-const YAW = THREE.MathUtils.degToRad(-14);
+const VESSEL_POS = VESSEL.pos;
+const YAW = VESSEL.yaw;
 
-// Act-aware lambert that samples the GLB's baked texture — the real
-// hull keeps living in the same atmosphere as everything else.
-function shipMatTextured(map) {
-  return new THREE.ShaderMaterial({
-    name: 'shipTex',
-    uniforms: {
-      uProgress: uniforms.uProgress,
-      uSunDir: uniforms.uSunDir,
-      tMap: { value: map },
-    },
-    vertexShader: /* glsl */`
-      varying vec3 vN;
-      varying vec2 vUv;
-      void main() {
-        vN = normalize(mat3(modelMatrix) * normal);
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: /* glsl */`
-      precision highp float;
-      uniform float uProgress;
-      uniform vec3 uSunDir;
-      uniform sampler2D tMap;
-      varying vec3 vN;
-      varying vec2 vUv;
-      ${ATMO_GLSL}
-      void main() {
-        vec3 alb = pow(texture2D(tMap, vUv).rgb, vec3(2.2));
-        vec3 n = normalize(vN);
-        float grey = actGrey(uProgress), mar = actMarine(uProgress);
-        float sunAmt = (1.0 - grey * 0.85) * (1.0 - mar);
-        vec3 sunCol = mix(vec3(1.25, 0.85, 0.6), vec3(0.7), grey) * 1.5;
-        float diff = max(0.0, (dot(n, uSunDir) + 0.3) / 1.3);
-        vec3 amb = mix(horizonCol(uProgress), zenithCol(uProgress), n.y * 0.5 + 0.5) * 0.75;
-        gl_FragColor = vec4(alb * (amb + sunCol * diff * (0.2 + 0.8 * sunAmt)), 1.0);
-      }
-    `,
-  });
-}
+import { actLambertTextured } from './materials.js';
+
+const shipMatTextured = actLambertTextured;
 
 function shipMat(hex, mult = 1) {
   return new THREE.ShaderMaterial({
@@ -143,7 +106,7 @@ export function createVessel() {
 
   // one patient anchor light
   const lightGeo = new THREE.BufferGeometry();
-  lightGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([34, 13.2, 0]), 3));
+  lightGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([46, 20, 0]), 3));
   const lightMat = new THREE.ShaderMaterial({
     uniforms: { uTime: uniforms.uTime, uReduced: uniforms.uReduced },
     transparent: true,
@@ -186,7 +149,7 @@ export function createVessel() {
       const box = new THREE.Box3().setFromObject(root);
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
-      const s = 76 / Math.max(size.x, size.z);
+      const s = VESSEL.length / Math.max(size.x, size.z);
       root.traverse((o) => {
         if (o.isMesh) {
           const map = o.material && o.material.map;
@@ -198,9 +161,27 @@ export function createVessel() {
       holder.add(root);
       holder.scale.setScalar(s);
       holder.rotation.y = Math.PI;                  // bow to +x
-      holder.position.y = size.y * s * 0.5 - 3.1;   // laden draft
+      holder.position.y = size.y * s * 0.5 - 3.6;   // laden draft
       group.add(holder);
       boxes.forEach((m) => { if (m.isMesh) group.remove(m); });
+
+      // sister ships on the horizon — the fleet is real
+      const parent = group.parent;
+      if (parent) {
+        group.userData.sisters = [];
+        for (const [x, z, sc, yaw] of [[-420, -2250, 0.62, 0.4], [330, -2650, 0.74, 1.9]]) {
+          const sister = holder.clone();
+          const g2 = new THREE.Group();
+          g2.add(sister);
+          sister.scale.setScalar(s * sc);
+          sister.position.y = holder.position.y * sc;
+          g2.position.set(x, 0, z);
+          g2.rotation.y = yaw;
+          g2.visible = false;
+          parent.add(g2);
+          group.userData.sisters.push(g2);
+        }
+      }
     })
     .catch(() => { /* the boxes stand watch */ });
 
@@ -210,12 +191,12 @@ export function createVessel() {
     const tt = t * (reduced ? 0.28 : 1);
     const cos = Math.cos(YAW), sin = Math.sin(YAW);
     const px = VESSEL_POS.x, pz = VESSEL_POS.z;
-    const bow = waveSample(px + cos * 30, pz - sin * 30, tt);
-    const aft = waveSample(px - cos * 30, pz + sin * 30, tt);
+    const bow = waveSample(px + cos * 45, pz - sin * 45, tt);
+    const aft = waveSample(px - cos * 45, pz + sin * 45, tt);
     const mid = waveSample(px, pz, tt);
     const k = 0.055; // inertia — a laden ship answers slowly
     sm.y += ((bow.y + aft.y + mid.y * 2) / 4 - sm.y) * k;
-    sm.px += (Math.atan2(aft.y - bow.y, 60) * 0.8 - sm.px) * k;
+    sm.px += (Math.atan2(aft.y - bow.y, 90) * 0.8 - sm.px) * k;
     sm.rz += (mid.nx * 0.35 - sm.rz) * k;
     group.position.y = sm.y * 0.7 - 1.7;
     group.rotation.z = sm.px;

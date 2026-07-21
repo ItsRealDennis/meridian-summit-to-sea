@@ -155,6 +155,9 @@ export async function createTerrain(onStep, highDetail = true) {
       uProgress: uniforms.uProgress,
       uSunDir: uniforms.uSunDir,
       uCamPos: { value: new THREE.Vector3() },
+      tSnow: { value: null },
+      tRock: { value: null },
+      uTexOn: { value: 0 },
     },
     vertexShader: /* glsl */`
       varying vec3 vWp;
@@ -167,8 +170,9 @@ export async function createTerrain(onStep, highDetail = true) {
     `,
     fragmentShader: /* glsl */`
       precision highp float;
-      uniform float uProgress;
+      uniform float uProgress, uTexOn;
       uniform vec3 uSunDir, uCamPos;
+      uniform sampler2D tSnow, tRock;
       varying vec3 vWp;
       varying vec3 vN;
       ${NOISE_GLSL}
@@ -204,6 +208,21 @@ export async function createTerrain(onStep, highDetail = true) {
         vec3 snowCol = mix(vec3(0.66, 0.72, 0.84), vec3(0.85, 0.87, 0.92), mr * 0.5 + 0.5);
         vec3 alb = mix(rockCol, snowCol, snow);
 
+        // photographic surface detail (loads progressively; the
+        // procedural base remains the fallback). Two projections so
+        // cliffs never smear, luminance-only so the grade stays ours.
+        if (uTexOn > 0.001) {
+          vec2 uvF = vWp.xz * 0.016;
+          vec2 uvW = vec2(vWp.x + vWp.z, vWp.y) * 0.016;
+          float sLum = dot(mix(texture2D(tSnow, uvW).rgb, texture2D(tSnow, uvF).rgb, flatness), vec3(0.333));
+          float rLum = dot(mix(texture2D(tRock, uvW * 1.7).rgb, texture2D(tRock, uvF * 1.7).rgb, flatness), vec3(0.333));
+          // second octave breaks any tiling up close
+          float s2 = dot(texture2D(tSnow, uvF * 5.3 + 0.37).rgb, vec3(0.333));
+          float snowMod = (0.72 + 0.42 * sLum) * (0.86 + 0.28 * s2 * nearAmt);
+          float rockMod = 0.42 + 1.25 * rLum;
+          alb *= mix(1.0, mix(rockMod, snowMod, snow), uTexOn * 0.9);
+        }
+
         // lighting — a low raking dawn sun that fades through the acts
         float grey = actGrey(uProgress), mar = actMarine(uProgress);
         float sunAmt = (1.0 - grey * 0.85) * (1.0 - mar);
@@ -234,8 +253,24 @@ export async function createTerrain(onStep, highDetail = true) {
 
   const mesh = new THREE.Mesh(geo, mat);
   mesh.frustumCulled = false;
+
+  // photographic detail streams in after boot; fade it in gently
+  let texReady = 0;
+  const tl = new THREE.TextureLoader();
+  const prep = (t) => {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.anisotropy = 4;
+    return t;
+  };
+  tl.load('assets/tex-snow.jpg', (t) => { mat.uniforms.tSnow.value = prep(t); texReady++; });
+  tl.load('assets/tex-rock.jpg', (t) => { mat.uniforms.tRock.value = prep(t); texReady++; });
+
   mesh.onBeforeRender = (r, s, camera) => {
     mat.uniforms.uCamPos.value.copy(camera.position);
+    if (texReady === 2 && mat.uniforms.uTexOn.value < 1) {
+      mat.uniforms.uTexOn.value = Math.min(1, mat.uniforms.uTexOn.value + 0.02);
+    }
   };
   return mesh;
 }

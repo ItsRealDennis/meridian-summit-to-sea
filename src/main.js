@@ -8,6 +8,7 @@ import { createOcean } from './scene/ocean.js';
 import { createVessel } from './scene/vessel.js';
 import { createSnow } from './scene/particles.js';
 import { createBirds } from './scene/birds.js';
+import { createSummit } from './scene/summit.js';
 import { bakeNoise3D, createPost } from './post.js';
 import { updateCamera, buildClearance } from './camera-path.js';
 import { createScroll } from './scroll.js';
@@ -96,6 +97,9 @@ async function boot() {
     const noise3D = await bakeNoise3D((f) => setProgress(0.08 + f * 0.30));
     const terrain = await createTerrain((f) => setProgress(0.38 + f * 0.42), !isMobile);
     buildClearance(groundHeight);
+    // photographic sister massifs stream in on the horizon
+    const summit = createSummit();
+    scene.add(summit);
     setProgress(0.80);
 
     scene.add(createSky());
@@ -108,6 +112,12 @@ async function boot() {
     scene.add(snow);
     const birds = createBirds();
     scene.add(birds);
+    // gulls working the water around the hull
+    const gulls = createBirds({
+      center: [20, 36, -1350], radii: [46, 96], window: [0.74, 0.84],
+      invert: true, tint: [0.82, 0.84, 0.86], count: 11,
+    });
+    scene.add(gulls);
     post = createPost(renderer, noise3D);
     applySize();
     setProgress(0.88);
@@ -188,9 +198,12 @@ async function boot() {
       // act-based culling — nothing invisible costs a draw
       snow.visible = p < 0.44;
       birds.visible = p < 0.22;
+      gulls.visible = p > 0.72;
       ocean.visible = p > 0.40;
       vessel.visible = p > 0.52;
       terrain.visible = p < 0.86;
+      summit.visible = p < 0.58;
+      vessel.userData.sisters?.forEach((s) => { s.visible = p > 0.62; });
       if (vessel.visible) vessel.userData.update(t, reduced);
       ui.update(p);
       audio.update(p, scroll.state.v, t);
