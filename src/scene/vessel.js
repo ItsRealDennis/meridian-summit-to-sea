@@ -11,6 +11,47 @@ import { waveSample } from './ocean.js';
 export const VESSEL_POS = new THREE.Vector3(16, 0, -1390);
 const YAW = THREE.MathUtils.degToRad(-14);
 
+// Act-aware lambert that samples the GLB's baked texture — the real
+// hull keeps living in the same atmosphere as everything else.
+function shipMatTextured(map) {
+  return new THREE.ShaderMaterial({
+    name: 'shipTex',
+    uniforms: {
+      uProgress: uniforms.uProgress,
+      uSunDir: uniforms.uSunDir,
+      tMap: { value: map },
+    },
+    vertexShader: /* glsl */`
+      varying vec3 vN;
+      varying vec2 vUv;
+      void main() {
+        vN = normalize(mat3(modelMatrix) * normal);
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */`
+      precision highp float;
+      uniform float uProgress;
+      uniform vec3 uSunDir;
+      uniform sampler2D tMap;
+      varying vec3 vN;
+      varying vec2 vUv;
+      ${ATMO_GLSL}
+      void main() {
+        vec3 alb = pow(texture2D(tMap, vUv).rgb, vec3(2.2));
+        vec3 n = normalize(vN);
+        float grey = actGrey(uProgress), mar = actMarine(uProgress);
+        float sunAmt = (1.0 - grey * 0.85) * (1.0 - mar);
+        vec3 sunCol = mix(vec3(1.25, 0.85, 0.6), vec3(0.7), grey) * 1.5;
+        float diff = max(0.0, (dot(n, uSunDir) + 0.3) / 1.3);
+        vec3 amb = mix(horizonCol(uProgress), zenithCol(uProgress), n.y * 0.5 + 0.5) * 0.75;
+        gl_FragColor = vec4(alb * (amb + sunCol * diff * (0.2 + 0.8 * sunAmt)), 1.0);
+      }
+    `,
+  });
+}
+
 function shipMat(hex, mult = 1) {
   return new THREE.ShaderMaterial({
     name: 'ship',
@@ -132,6 +173,36 @@ export function createVessel() {
 
   group.position.copy(VESSEL_POS);
   group.rotation.y = YAW;
+
+  // Progressive enhancement: a photogrammetry-grade hull streams in
+  // behind the loader and replaces the boxes. If anything fails, the
+  // procedural silhouette simply stays.
+  const boxes = [...group.children];
+  import('../../vendor/GLTFLoader.js')
+    .then(({ GLTFLoader }) => new Promise((res, rej) =>
+      new GLTFLoader().load('assets/vessel.glb', res, undefined, rej)))
+    .then((gltf) => {
+      const root = gltf.scene;
+      const box = new THREE.Box3().setFromObject(root);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const s = 76 / Math.max(size.x, size.z);
+      root.traverse((o) => {
+        if (o.isMesh) {
+          const map = o.material && o.material.map;
+          o.material = map ? shipMatTextured(map) : shipMat('#1a1e23');
+        }
+      });
+      const holder = new THREE.Group();
+      root.position.copy(center).multiplyScalar(-1);
+      holder.add(root);
+      holder.scale.setScalar(s);
+      holder.rotation.y = Math.PI;                  // bow to +x
+      holder.position.y = size.y * s * 0.5 - 3.1;   // laden draft
+      group.add(holder);
+      boxes.forEach((m) => { if (m.isMesh) group.remove(m); });
+    })
+    .catch(() => { /* the boxes stand watch */ });
 
   // buoyancy — three sample points → heave, pitch, roll
   const sm = { y: 0, px: 0, rz: 0 };

@@ -86,10 +86,12 @@ fonts/              woff2 subsets + OFL licences
 
 | Asset | Source | Licence |
 |---|---|---|
-| three.js r166 | npm `three` | MIT — `vendor/THREE-LICENSE.txt` |
+| three.js r166 (+ GLTFLoader, BufferGeometryUtils) | npm `three` | MIT — `vendor/THREE-LICENSE.txt` |
 | Jost (variable) | Google Fonts | SIL OFL 1.1 — `fonts/OFL-Jost.txt` |
 | Cormorant Garamond | Google Fonts | SIL OFL 1.1 — `fonts/OFL-CormorantGaramond.txt` |
-| Everything else | generated in this repository (terrain, clouds, ocean, vessel, audio, favicon, OG image) | — |
+| `assets/vessel.glb` | AI-generated for this project (Higgsfield image→3D from an AI-generated reference; WebP-optimised). Loads as a progressive enhancement — the procedural bulker remains the fallback | project asset |
+| `assets/og.jpg` | AI-generated dawn photograph (Higgsfield), composited with the site's own typography | project asset |
+| Everything else | generated in this repository (terrain, clouds, ocean, audio, favicon) | — |
 
 MERIDIAN is a fictional company created for a benchmark. No real
 brand is referenced, imitated, or harmed.
