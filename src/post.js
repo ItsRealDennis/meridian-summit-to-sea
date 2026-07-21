@@ -113,11 +113,42 @@ export function createPost(renderer, noise3D) {
     depthBuffer: true,
   });
 
-  const mat = new THREE.ShaderMaterial({
-    name: 'composite',
+  // half-res target for the volumetric march — a quarter of the
+  // pixels, upsampled with depth-aware weights
+  const rtClouds = new THREE.WebGLRenderTarget(
+    Math.max(1, size.x >> 1), Math.max(1, size.y >> 1),
+    { type: THREE.HalfFloatType, depthBuffer: false });
+  rtClouds.texture.minFilter = THREE.NearestFilter;
+  rtClouds.texture.magFilter = THREE.NearestFilter;
+
+  const FS_VERT = /* glsl */`
+    out vec2 vUv;
+    void main() {
+      vUv = position.xy * 0.5 + 0.5;
+      gl_Position = vec4(position.xy, 0.0, 1.0);
+    }
+  `;
+
+  const RAY_COMMON = /* glsl */`
+    uniform mat4 uInvProjView;
+    uniform vec3 uCamPos, uCamFwd, uSunDir;
+    uniform float uNear, uFar, uTime, uProgress, uReduced;
+
+    float worldDist(float d, vec3 rd) {
+      if (d >= 0.99999) return 1e7;
+      float viewZ = (uNear * uFar) / (d * (uFar - uNear) - uFar); // negative
+      return -viewZ / max(dot(rd, uCamFwd), 1e-4);
+    }
+    vec3 rayDir(vec2 uv) {
+      vec4 w = uInvProjView * vec4(uv * 2.0 - 1.0, 1.0, 1.0);
+      return normalize(w.xyz / w.w - uCamPos);
+    }
+  `;
+
+  const cloudMat = new THREE.ShaderMaterial({
+    name: 'cloudPass',
     glslVersion: THREE.GLSL3,
     uniforms: {
-      tScene: { value: rt.texture },
       tDepth: { value: depthTexture },
       tNoise: { value: noise3D },
       tBlue: { value: makeBlueNoise() },
@@ -126,10 +157,8 @@ export function createPost(renderer, noise3D) {
       uCamFwd: { value: new THREE.Vector3() },
       uNear: { value: WORLD.near },
       uFar: { value: WORLD.far },
-      uRes: { value: new THREE.Vector2() },
       uSteps: { value: 16 },
       uCoverage: { value: 0.62 },
-      uWhiteout: { value: 0 },
       uTime: uniforms.uTime,
       uProgress: uniforms.uProgress,
       uSunDir: uniforms.uSunDir,
@@ -137,28 +166,17 @@ export function createPost(renderer, noise3D) {
     },
     depthWrite: false,
     depthTest: false,
-    vertexShader: /* glsl */`
-      out vec2 vUv;
-      void main() {
-        vUv = position.xy * 0.5 + 0.5;
-        gl_Position = vec4(position.xy, 0.0, 1.0);
-      }
-    `,
+    vertexShader: FS_VERT,
     fragmentShader: /* glsl */`
       precision highp float;
       precision highp sampler3D;
       in vec2 vUv;
       out vec4 oCol;
-      uniform sampler2D tScene, tDepth, tBlue;
+      uniform sampler2D tDepth, tBlue;
       uniform sampler3D tNoise;
-      uniform mat4 uInvProjView;
-      uniform vec3 uCamPos, uCamFwd, uSunDir;
-      uniform float uNear, uFar, uTime, uProgress, uReduced;
-      uniform float uSteps, uCoverage, uWhiteout;
-      uniform vec2 uRes;
-      ${NOISE_GLSL}
+      uniform float uSteps, uCoverage;
       ${ATMO_GLSL}
-      ${FOG_GLSL}
+      ${RAY_COMMON}
 
       const float C_TOP = ${WORLD.cloudTop.toFixed(1)};
       const float C_BOT = ${WORLD.cloudBot.toFixed(1)};
@@ -167,12 +185,9 @@ export function createPost(renderer, noise3D) {
         // the deck floor undulates — no ruler lines across the world
         float botWobble = (texture(tNoise, vec3(p.xz * 0.00033, 0.71)).r - 0.5) * 66.0;
         float hN = clamp((p.y - C_BOT - botWobble) / (C_TOP - C_BOT), 0.0, 1.0);
-        // rounded profile — soft floor, billowed top
         float prof = smoothstep(0.0, 0.18, hN) * (1.0 - smoothstep(0.42, 1.0, hN) * 0.85);
-        // large-scale weather: masses and lanes, breaks any tiling
         float mass = texture(tNoise, vec3(p.x * 0.00021, 0.31, p.z * 0.00019)).r;
         float covLocal = clamp(cov * (0.42 + 1.15 * mass), 0.0, 0.98);
-        // two rotated sample domains — the lattice never lines up
         float drift = uTime * 0.006 * (1.0 - uReduced * 0.7);
         vec2 xa = mat2(0.857, -0.515, 0.515, 0.857) * p.xz;
         vec2 xb = mat2(0.682, 0.731, -0.731, 0.682) * p.xz;
@@ -193,49 +208,23 @@ export function createPost(renderer, noise3D) {
       }
 
       void main() {
-        vec2 ndc = vUv * 2.0 - 1.0;
-        vec4 w = uInvProjView * vec4(ndc, 1.0, 1.0);
-        vec3 rd = normalize(w.xyz / w.w - uCamPos);
+        vec3 rd = rayDir(vUv);
         vec3 ro = uCamPos;
-
-        vec3 col = texture(tScene, vUv).rgb;
-
-        float d = texture(tDepth, vUv).r;
-        bool isSky = d >= 0.99999;
-        float dist = 1e7;
-        if (!isSky) {
-          float viewZ = (uNear * uFar) / (d * (uFar - uNear) - uFar); // negative
-          dist = -viewZ / max(dot(rd, uCamFwd), 1e-4);
-        }
+        float dist = worldDist(texture(tDepth, vUv).r, rd);
 
         float grey = actGrey(uProgress);
         float mar = actMarine(uProgress);
 
-        // ── aerial + height fog on surfaces ──
-        if (!isSky) {
-          vec3 fCol = fogColor(rd, uSunDir, uProgress);
-          float haze = 1.0 - exp(-dist * mix(0.00016, 0.00033, max(grey, mar)));
-          // marine mist hugging the water
-          float mist = heightFog(ro, rd, dist, -6.0, 36.0, 0.0026 * mar);
-          // thin valley haze under the deck at dawn
-          float valley = heightFog(ro, rd, dist, 30.0, 90.0, 0.0022 * (1.0 - mar));
-          float fogA = clamp(haze + mist + valley, 0.0, 1.0);
-          col = mix(col, fCol, fogA);
-        }
-
-        // ── volumetric cloud deck ──
         float tTop = (C_TOP - ro.y) / rd.y;
         float tBot = (C_BOT - ro.y) / rd.y;
         float t0 = min(tTop, tBot), t1 = max(tTop, tBot);
-        if (abs(rd.y) < 1e-3) { // grazing: inside slab sees clouds, else not
+        if (abs(rd.y) < 1e-3) {
           bool inside = ro.y > C_BOT && ro.y < C_TOP;
           t0 = inside ? 0.0 : 1e8;
           t1 = inside ? 4000.0 : -1.0;
         }
         t0 = max(t0, 0.0);
         t1 = min(t1, min(dist, 5200.0));
-        // from below, resolve the ceiling where it enters — the far
-        // reaches merge into haze anyway (kills grazing-angle speckle)
         t1 = min(t1, t0 + 750.0);
 
         float T = 1.0;
@@ -254,7 +243,7 @@ export function createPost(renderer, noise3D) {
           shdCol = mix(shdCol, vec3(0.485, 0.535, 0.575), mar);
           float phase = 1.0 + 2.4 * pow(max(dot(rd, uSunDir), 0.0), 9.0) * sunAmt;
 
-          for (int i = 0; i < 24; i++) {
+          for (int i = 0; i < 28; i++) {
             if (float(i) >= n || T < 0.012) break;
             vec3 p = ro + rd * tcur;
             float dens = cloudMap(p, uCoverage);
@@ -269,14 +258,92 @@ export function createPost(renderer, noise3D) {
             }
             tcur += dt;
           }
-          // clouds themselves fade into distance haze (mid-span keyed,
-          // so the march limit never shows as an edge)
           float cloudDist = clamp(((t0 + t1) * 0.5 - 1100.0) / 3100.0, 0.0, 1.0);
           vec3 fCol = fogColor(rd, uSunDir, uProgress);
           acc = mix(acc, fCol * (1.0 - T), cloudDist);
           T = mix(T, 1.0 - (1.0 - T) * 0.85, cloudDist * 0.4);
         }
-        col = col * T + acc;
+        oCol = vec4(acc, T);
+      }
+    `,
+  });
+
+  const mat = new THREE.ShaderMaterial({
+    name: 'composite',
+    glslVersion: THREE.GLSL3,
+    uniforms: {
+      tScene: { value: rt.texture },
+      tDepth: { value: depthTexture },
+      tClouds: { value: rtClouds.texture },
+      uInvProjView: { value: new THREE.Matrix4() },
+      uCamPos: { value: new THREE.Vector3() },
+      uCamFwd: { value: new THREE.Vector3() },
+      uNear: { value: WORLD.near },
+      uFar: { value: WORLD.far },
+      uRes: { value: new THREE.Vector2() },
+      uResC: { value: new THREE.Vector2() },
+      uWhiteout: { value: 0 },
+      uTime: uniforms.uTime,
+      uProgress: uniforms.uProgress,
+      uSunDir: uniforms.uSunDir,
+      uReduced: uniforms.uReduced,
+    },
+    depthWrite: false,
+    depthTest: false,
+    vertexShader: FS_VERT,
+    fragmentShader: /* glsl */`
+      precision highp float;
+      in vec2 vUv;
+      out vec4 oCol;
+      uniform sampler2D tScene, tDepth, tClouds;
+      uniform float uWhiteout;
+      uniform vec2 uRes, uResC;
+      ${NOISE_GLSL}
+      ${ATMO_GLSL}
+      ${FOG_GLSL}
+      ${RAY_COMMON}
+
+      void main() {
+        vec3 rd = rayDir(vUv);
+        vec3 ro = uCamPos;
+
+        vec3 col = texture(tScene, vUv).rgb;
+        float d = texture(tDepth, vUv).r;
+        bool isSky = d >= 0.99999;
+        float dist = worldDist(d, rd);
+
+        float grey = actGrey(uProgress);
+        float mar = actMarine(uProgress);
+
+        // ── aerial + height fog on surfaces ──
+        if (!isSky) {
+          vec3 fCol = fogColor(rd, uSunDir, uProgress);
+          float haze = 1.0 - exp(-dist * mix(0.00016, 0.00033, max(grey, mar)));
+          float mist = heightFog(ro, rd, dist, -6.0, 36.0, 0.0026 * mar);
+          float valley = heightFog(ro, rd, dist, 30.0, 90.0, 0.0022 * (1.0 - mar));
+          float fogA = clamp(haze + mist + valley, 0.0, 1.0);
+          col = mix(col, fCol, fogA);
+        }
+
+        // ── clouds: depth-aware bilateral upsample of the half-res march ──
+        vec2 texelC = 1.0 / uResC;
+        vec2 base = (floor(vUv * uResC - 0.5) + 0.5) * texelC;
+        vec4 cl = vec4(0.0);
+        float wsum = 0.0;
+        for (int oy = 0; oy <= 1; oy++)
+          for (int ox = 0; ox <= 1; ox++) {
+            vec2 su = base + vec2(float(ox), float(oy)) * texelC;
+            vec4 c = texture(tClouds, su);
+            float dS = worldDist(texture(tDepth, su).r, rd);
+            float wBi = max(0.0, 1.0 - abs(vUv.x - su.x) / texelC.x)
+                      * max(0.0, 1.0 - abs(vUv.y - su.y) / texelC.y);
+            float wD = exp(-abs(dist - dS) / (0.12 * dist + 8.0));
+            float w = wBi * wD + 1e-4;
+            cl += c * w;
+            wsum += w;
+          }
+        cl /= wsum;
+        col = col * cl.a + cl.rgb;
 
         // ── the held breath — guaranteed white-out with live wisps ──
         if (uWhiteout > 0.001) {
@@ -321,18 +388,27 @@ export function createPost(renderer, noise3D) {
   const api = {
     rt,
     mat,
+    cloudMat,
     setSize(w, h) {
       rt.setSize(w, h);
+      rtClouds.setSize(Math.max(1, w >> 1), Math.max(1, h >> 1));
       mat.uniforms.uRes.value.set(w, h);
+      mat.uniforms.uResC.value.set(Math.max(1, w >> 1), Math.max(1, h >> 1));
     },
     render(scene, camera) {
-      mat.uniforms.uCamPos.value.copy(camera.position);
-      camera.getWorldDirection(mat.uniforms.uCamFwd.value);
-      mat.uniforms.uInvProjView.value
-        .multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
-        .invert();
+      for (const m of [mat, cloudMat]) {
+        m.uniforms.uCamPos.value.copy(camera.position);
+        camera.getWorldDirection(m.uniforms.uCamFwd.value);
+        m.uniforms.uInvProjView.value
+          .multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+          .invert();
+      }
       renderer.setRenderTarget(rt);
       renderer.render(scene, camera);
+      quad.material = cloudMat;
+      renderer.setRenderTarget(rtClouds);
+      renderer.render(postScene, postCam);
+      quad.material = mat;
       renderer.setRenderTarget(null);
       renderer.render(postScene, postCam);
     },

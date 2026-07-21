@@ -303,6 +303,22 @@ body.live #cue.gone { opacity: 0; transition: opacity .6s ease; }
   text-shadow: 0 1px 8px rgba(28, 24, 36, .5), 0 1px 3px rgba(28, 24, 36, .35);
 }
 
+/* per-word entrance: the line assembles itself out of the air.
+   --lp (local progress) is written once per frame by JS; each word
+   computes its own lag in CSS. */
+.statement .w {
+  display: inline-block;
+  opacity: clamp(0, calc((var(--lp, 0) - var(--wi, 0) * 0.05) * 4), 1);
+  transform: translateY(calc((1 - clamp(0, calc((var(--lp, 0) - var(--wi, 0) * 0.05) * 4), 1)) * 0.32em));
+}
+@media (prefers-reduced-motion: reduce) {
+  .statement .w { opacity: 1; transform: none; }
+}
+
+/* magnetic controls drift toward the hand */
+.mag { transition: transform .45s cubic-bezier(.22, .9, .3, 1); will-change: transform; }
+.mag.mag-live { transition: transform .06s linear; }
+
 /* statements */
 .statement {
   font-style: italic; font-weight: 300;
@@ -401,6 +417,76 @@ body.live #instrument.retired { opacity: 0; transition: opacity .8s ease; }
   transition: color .3s ease;
 }
 #to-top:hover, #to-top:focus-visible { color: var(--ink); }
+
+/* ── division deep-dives ───────────────────────────────────── */
+.div-more {
+  margin-top: 3vh; pointer-events: auto;
+  background: none; border: 0; cursor: pointer; color: var(--ink-dim);
+  font: inherit; font-size: 10px; letter-spacing: .34em;
+  display: inline-flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 8px 0;
+  transition: color .3s ease;
+}
+.div-more span { transition: transform .3s cubic-bezier(.3, 0, .2, 1); }
+.div-more:hover, .div-more:focus-visible { color: var(--ink); }
+.div-more:hover span { transform: translateX(6px); }
+
+#panel {
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(9, 14, 19, .93);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  display: grid; place-items: center;
+  opacity: 0; visibility: hidden;
+  transition: opacity .55s cubic-bezier(.3, 0, .2, 1), visibility .55s;
+}
+#panel.open { opacity: 1; visibility: visible; }
+#panel article {
+  width: min(720px, 86vw); color: #efe9dd;
+}
+#panel .pn {
+  font-size: 10px; letter-spacing: .5em; color: #d8b98a; margin-bottom: 3.5vh;
+}
+#panel h2 {
+  font-style: italic; font-weight: 300;
+  font-size: clamp(30px, 4.6vw, 54px); line-height: 1.16;
+  margin-bottom: 3.5vh;
+}
+#panel .pl {
+  font-size: clamp(13px, 1.3vw, 15.5px); font-weight: 300;
+  letter-spacing: .06em; line-height: 2; color: rgba(239, 233, 221, .78);
+  max-width: 54ch; margin-bottom: 5vh;
+}
+#panel dl {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 3vw;
+  border-top: 1px solid rgba(239, 233, 221, .2); padding-top: 3.5vh;
+}
+#panel dt {
+  font-size: clamp(20px, 2.2vw, 27px); font-weight: 200;
+  letter-spacing: .1em; font-variant-numeric: tabular-nums;
+}
+#panel dd {
+  margin-top: 8px; font-size: 10.5px; letter-spacing: .18em;
+  text-transform: uppercase; color: rgba(239, 233, 221, .55); line-height: 1.7;
+}
+#panel-close {
+  position: absolute; top: 26px; right: clamp(22px, 4vw, 54px);
+  background: none; border: 0; cursor: pointer; color: rgba(239, 233, 221, .6);
+  font: inherit; font-size: 11px; letter-spacing: .32em;
+  min-height: 44px; padding: 8px;
+  transition: color .3s ease;
+}
+#panel-close:hover, #panel-close:focus-visible { color: #efe9dd; }
+#panel article { animation: panel-in .7s cubic-bezier(.22, .9, .28, 1) both; }
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: none; }
+}
+@media (max-width: 640px) {
+  #panel dl { grid-template-columns: 1fr; gap: 3vh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #panel article { animation: none; }
+}
 
 /* ── cursor ────────────────────────────────────────────────── */
 #cursor {

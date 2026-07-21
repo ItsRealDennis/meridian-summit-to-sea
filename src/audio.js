@@ -108,7 +108,56 @@ export function createAudio() {
     g.hornBus.connect(master);
     g.hornBus.connect(verb);
 
+    // ── the score: a glacial pad, composed in the engine ──
+    // four slow chords, fourteen seconds each, crossfading — it can
+    // loop forever without a seam because there is no file to loop
+    scoreLP = ctx.createBiquadFilter();
+    scoreLP.type = 'lowpass'; scoreLP.frequency.value = 760; scoreLP.Q.value = 0.4;
+    g.score = ctx.createGain(); g.score.gain.value = 0;
+    scoreLP.connect(g.score).connect(master);
+    g.score.connect(verb);
+
     built = true;
+  }
+
+  // Dm(add9) → B♭maj7 → Fadd9 → Csus2 — quiet power in four bars
+  const CHORDS = [
+    [73.42, 146.83, 220.0, 329.63, 349.23],
+    [58.27, 116.54, 174.61, 220.0, 293.66],
+    [87.31, 174.61, 261.63, 349.23, 392.0],
+    [65.41, 130.81, 196.0, 293.66, 392.0],
+  ];
+  const CHORD_LEN = 14, XFADE = 5;
+  let scoreLP, chordIdx = 0, nextChordAt = 0;
+
+  function playChord(freqs, at) {
+    for (const f of freqs) {
+      for (const det of [-0.0013, 0.0016]) {
+        const o = ctx.createOscillator();
+        o.type = 'triangle';
+        o.frequency.value = f * (1 + det);
+        const env = ctx.createGain();
+        env.gain.value = 0;
+        o.connect(env).connect(scoreLP);
+        const peak = 0.026 / Math.sqrt(freqs.length);
+        env.gain.setValueAtTime(0, at);
+        env.gain.linearRampToValueAtTime(peak, at + XFADE);
+        env.gain.setValueAtTime(peak, at + CHORD_LEN);
+        env.gain.linearRampToValueAtTime(0, at + CHORD_LEN + XFADE);
+        o.start(at);
+        o.stop(at + CHORD_LEN + XFADE + 0.1);
+      }
+    }
+  }
+
+  function scheduleScore() {
+    if (!built || ctx.state !== 'running') return;
+    if (ctx.currentTime > nextChordAt - 1.0) {
+      const at = Math.max(nextChordAt, ctx.currentTime + 0.05);
+      playChord(CHORDS[chordIdx % CHORDS.length], at);
+      chordIdx++;
+      nextChordAt = at + CHORD_LEN;
+    }
   }
 
   function horn(long = true) {
@@ -152,6 +201,11 @@ export function createAudio() {
     set(g.breath, seam * 0.05, 1.1);
     set(g.ocean, act3 * 0.26 * (1 - seam), 0.9);
     set(g.lfoDepth, act3 * (1 - seam) * 0.45, 0.9);
+
+    // the pad breathes with the acts and holds its breath at the seam
+    scheduleScore();
+    const tail = 1 - smooth(0.955, 1.0, p) * 0.55;
+    set(g.score, (0.55 + 0.25 * act3) * (1 - seam * 0.88) * tail, 1.2);
 
     // the horn: once on the breakthrough, once alongside her
     if (hornArmed.seam && p > 0.578 && p < 0.7 && t - lastHornAt > 20) {

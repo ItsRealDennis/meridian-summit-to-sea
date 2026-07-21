@@ -43,6 +43,51 @@ export function createUI(scroll, audio) {
   let lastInstText = '';
   let staticOn = false;
 
+  // ── per-word statement reveals ──
+  // words carry their own lag in CSS; JS writes one --lp per frame
+  document.querySelectorAll('.statement').forEach((el) => {
+    el.setAttribute('aria-label', el.textContent.trim().replace(/\s+/g, ' '));
+    let wi = 0;
+    const wrap = (node) => {
+      [...node.childNodes].forEach((c) => {
+        if (c.nodeType === 3) {
+          const frag = document.createDocumentFragment();
+          c.textContent.split(/(\s+)/).forEach((tok) => {
+            if (!tok) return;
+            if (/^\s+$/.test(tok)) { frag.appendChild(document.createTextNode(tok)); return; }
+            const s = document.createElement('span');
+            s.className = 'w';
+            s.setAttribute('aria-hidden', 'true');
+            s.style.setProperty('--wi', wi++);
+            s.textContent = tok;
+            frag.appendChild(s);
+          });
+          node.replaceChild(frag, c);
+        }
+      });
+    };
+    wrap(el);
+  });
+
+  // ── magnetic controls ──
+  if (matchMedia('(hover: hover) and (pointer: fine)').matches && !prefersReducedMotion()) {
+    document.querySelectorAll('.nav-links a, .cta, #sound-toggle, #menu-toggle, #to-top, .div-more')
+      .forEach((el) => {
+        el.classList.add('mag');
+        el.addEventListener('pointermove', (e) => {
+          const r = el.getBoundingClientRect();
+          const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
+          const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
+          el.classList.add('mag-live');
+          el.style.transform = `translate(${(dx * 7).toFixed(1)}px, ${(dy * 5).toFixed(1)}px)`;
+        });
+        el.addEventListener('pointerleave', () => {
+          el.classList.remove('mag-live');
+          el.style.transform = '';
+        });
+      });
+  }
+
   // ── wordmark entrance: letters converge from a wide tracking ──
   const letters = [...document.querySelectorAll('.wordmark span')];
   function playEntrance() {
@@ -88,11 +133,38 @@ export function createUI(scroll, audio) {
   }
   menuBtn.addEventListener('click', () => toggleMenu(!menu.classList.contains('open')));
   addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && menu.classList.contains('open')) toggleMenu(false);
+    if (e.key === 'Escape') {
+      if (panel.classList.contains('open')) { closePanel(); return; }
+      if (menu.classList.contains('open')) toggleMenu(false);
+    }
     if (e.key === 'm' || e.key === 'M') {
       if (!/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) toggleSound();
     }
   });
+
+  // ── division deep-dive panels ──
+  const panel = document.getElementById('panel');
+  const panelClose = document.getElementById('panel-close');
+  let panelReturnFocus = null;
+  function openPanel(id, trigger) {
+    panel.querySelectorAll('article').forEach((a) => { a.hidden = a.id !== id; });
+    panel.classList.add('open');
+    panel.setAttribute('aria-hidden', 'false');
+    document.documentElement.style.overflow = 'hidden'; // the film waits
+    panelReturnFocus = trigger || null;
+    panelClose.focus();
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    panel.setAttribute('aria-hidden', 'true');
+    document.documentElement.style.overflow = '';
+    panelReturnFocus?.focus?.();
+  }
+  document.querySelectorAll('.div-more').forEach((b) => {
+    b.addEventListener('click', () => openPanel(b.dataset.panel, b));
+  });
+  panelClose.addEventListener('click', closePanel);
+  panel.addEventListener('click', (e) => { if (e.target === panel) closePanel(); });
 
   function toggleSound() {
     const on = audio.toggle();
@@ -155,11 +227,15 @@ export function createUI(scroll, audio) {
         const fadeOut = s.out === 'none' ? 0
           : isHero ? smooth(0.42, 0.88, local)
           : smooth(0.8, 0.995, local);
-        const op = fadeIn * (1 - fadeOut);
-        let ty = (1 - fadeIn) * 30;
+        const isStatement = el.classList.contains('statement');
+        // statements assemble word by word (CSS-computed); the block
+        // itself only handles the exit
+        const op = isStatement ? (1 - fadeOut) : fadeIn * (1 - fadeOut);
+        let ty = isStatement ? 0 : (1 - fadeIn) * 30;
         let blur = 0;
         if (s.out === 'fog') { blur = fadeOut * 9; ty -= fadeOut * 14; }
         if (s.out === 'up') ty -= fadeOut * 44;
+        if (isStatement) el.style.setProperty('--lp', (reduced ? 1 : fadeIn).toFixed(3));
         el.style.opacity = op.toFixed(3);
         el.style.transform = `translateY(${ty.toFixed(2)}px)`;
         el.style.filter = (canBlur && !reduced && blur > 0.2) ? `blur(${blur.toFixed(2)}px)` : '';

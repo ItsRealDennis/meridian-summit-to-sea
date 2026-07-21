@@ -116,6 +116,7 @@
       <h2 class="div-name reveal">TRADING</h2>
       <p class="div-line serif reveal">Physical flows, priced with discipline.</p>
       <p class="div-stat reveal"><b>412 Mt</b> moved in 2025</p>
+      <button class="div-more reveal" data-panel="p-trading">EXPLORE TRADING <span aria-hidden="true">→</span></button>
     </section>
 
     <section class="s div-s" id="capital" aria-label="Meridian Capital">
@@ -123,6 +124,7 @@
       <h2 class="div-name reveal">CAPITAL</h2>
       <p class="div-line serif reveal">Patient capital for impatient markets.</p>
       <p class="div-stat reveal"><b>$9.4 bn</b> deployed across the cycle</p>
+      <button class="div-more reveal" data-panel="p-capital">EXPLORE CAPITAL <span aria-hidden="true">→</span></button>
     </section>
 
     <section class="s div-s" id="maritime" aria-label="Meridian Maritime">
@@ -130,6 +132,7 @@
       <h2 class="div-name reveal">MARITIME</h2>
       <p class="div-line serif reveal">Seventy-one vessels. One standard.</p>
       <p class="div-stat reveal"><b>2.6M dwt</b> at sea this morning</p>
+      <button class="div-more reveal" data-panel="p-maritime">EXPLORE MARITIME <span aria-hidden="true">→</span></button>
     </section>
 
     <section class="s div-s" id="energy" aria-label="Meridian Energy">
@@ -137,6 +140,7 @@
       <h2 class="div-name reveal">ENERGY</h2>
       <p class="div-line serif reveal">Fuelling the transition, not the headlines.</p>
       <p class="div-stat reveal"><b>18 GWh</b> of storage in development</p>
+      <button class="div-more reveal" data-panel="p-energy">EXPLORE ENERGY <span aria-hidden="true">→</span></button>
     </section>
 
     <section class="s" id="seam" data-ink="dark" aria-label="The seam">
@@ -189,6 +193,60 @@
         <button id="to-top" data-goto="0">RETURN TO THE SUMMIT ↑</button>
       </div>
     </footer>
+
+  <!-- ══ Division deep-dives ══ -->
+  <div id="panel" role="dialog" aria-modal="true" aria-hidden="true">
+    <button id="panel-close" aria-label="Close">CLOSE ×</button>
+    <article id="p-trading" hidden>
+      <p class="pn">01 — MERIDIAN TRADING</p>
+      <h2 class="serif">The physical layer<br>of the world economy.</h2>
+      <p class="pl">Iron ore, copper concentrate, thermal coal in managed decline,
+      grain when the season asks. We buy what exists, move it through weather
+      and politics, and deliver it where it is needed — priced with discipline,
+      hedged without theatre.</p>
+      <dl>
+        <div><dt>412 Mt</dt><dd>physical volume moved in 2025</dd></div>
+        <div><dt>38</dt><dd>offices across six continents</dd></div>
+        <div><dt>3</dt><dd>trading desks awake at any hour</dd></div>
+      </dl>
+    </article>
+    <article id="p-capital" hidden>
+      <p class="pn">02 — MERIDIAN CAPITAL</p>
+      <h2 class="serif">Patient capital<br>for impatient markets.</h2>
+      <p class="pl">We finance the assets others find too slow: terminals, smelters,
+      rail spurs, storage. Cycles reward the balance sheet that can wait, and
+      ours has waited through four of them.</p>
+      <dl>
+        <div><dt>$9.4 bn</dt><dd>deployed across the cycle</dd></div>
+        <div><dt>9 yrs</dt><dd>average holding period</dd></div>
+        <div><dt>61</dt><dd>operating assets in portfolio</dd></div>
+      </dl>
+    </article>
+    <article id="p-maritime" hidden>
+      <p class="pn">03 — MERIDIAN MARITIME</p>
+      <h2 class="serif">Seventy-one vessels.<br>One standard.</h2>
+      <p class="pl">Owned and chartered, capesize to handysize, audited to the same
+      line in the same book. The sea does not negotiate, so neither do our
+      maintenance schedules.</p>
+      <dl>
+        <div><dt>71</dt><dd>vessels under management</dd></div>
+        <div><dt>2.6M dwt</dt><dd>on the water this morning</dd></div>
+        <div><dt>99.2%</dt><dd>on-time laycan performance</dd></div>
+      </dl>
+    </article>
+    <article id="p-energy" hidden>
+      <p class="pn">04 — MERIDIAN ENERGY</p>
+      <h2 class="serif">Fuelling the transition,<br>not the headlines.</h2>
+      <p class="pl">Storage before slogans: grid-scale batteries, pumped hydro
+      options, renewable offtake underwritten by a trading book that knows
+      what a megawatt-hour is worth at 4 a.m.</p>
+      <dl>
+        <div><dt>18 GWh</dt><dd>of storage in development</dd></div>
+        <div><dt>1.2 GW</dt><dd>renewable PPA book</dd></div>
+        <div><dt>14</dt><dd>grid partners, three markets</dd></div>
+      </dl>
+    </article>
+  </div>
 
   <div id="cursor" aria-hidden="true"></div>
 

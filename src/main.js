@@ -6,7 +6,7 @@ import { createSky } from './scene/sky.js';
 import { createTerrain, groundHeight } from './scene/terrain.js';
 import { createOcean } from './scene/ocean.js';
 import { createVessel } from './scene/vessel.js';
-import { createSnow } from './scene/particles.js';
+import { createSnow, createSpindrift } from './scene/particles.js';
 import { createBirds } from './scene/birds.js';
 import { createSummit } from './scene/summit.js';
 import { bakeNoise3D, createPost } from './post.js';
@@ -59,7 +59,7 @@ async function boot() {
   const quality = {
     dprCap: isMobile ? 1.5 : 1.75,
     scale: 1,           // adaptive multiplier
-    steps: isMobile ? 11 : 16,
+    steps: isMobile ? 14 : 20,   // half-res march affords more depth
     floor: 0.55,
     maxPixels: isMobile ? 2.2e6 : 3.4e6,   // raymarch budget — ultrawides included
   };
@@ -113,6 +113,8 @@ async function boot() {
     scene.add(vessel);
     const snow = createSnow();
     scene.add(snow);
+    const spindrift = createSpindrift();
+    scene.add(spindrift);
     const birds = createBirds();
     scene.add(birds);
     // gulls working the water around the hull
@@ -167,15 +169,15 @@ async function boot() {
     let emaDt = 16, lastTune = 0;
 
     function setCloudUniforms(p) {
-      const m = post.mat.uniforms;
+      const c = post.cloudMat.uniforms;
       // coverage: broken cotton at dawn → ragged entry → shut at the
       // seam → high ceiling at sea
       const seamCov = Math.exp(-Math.pow((p - 0.5) / 0.068, 2));
-      m.uCoverage.value = 0.55 + 0.43 * seamCov + 0.17 * smooth(0.55, 0.7, p);
+      c.uCoverage.value = 0.55 + 0.43 * seamCov + 0.17 * smooth(0.55, 0.7, p);
+      c.uSteps.value = quality.steps;
       const build = smooth(0.435, 0.502, p);
       const release = 1 - smooth(0.535, 0.60, p);
-      m.uWhiteout.value = Math.min(build, release) * 0.99;
-      m.uSteps.value = quality.steps;
+      post.mat.uniforms.uWhiteout.value = Math.min(build, release) * 0.99;
     }
     function smooth(a, b, x) {
       const q = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -200,6 +202,7 @@ async function boot() {
 
       // act-based culling — nothing invisible costs a draw
       snow.visible = p < 0.44;
+      spindrift.visible = p < 0.30;
       birds.visible = p < 0.22;
       gulls.visible = p > 0.72;
       ocean.visible = p > 0.40;
@@ -218,11 +221,11 @@ async function boot() {
       if (t - lastTune > 1.6) {
         if (emaDt > 24 && quality.scale > quality.floor) {
           quality.scale = Math.max(quality.floor, quality.scale * 0.86);
-          quality.steps = Math.max(9, quality.steps - 2);
+          quality.steps = Math.max(10, quality.steps - 2);
           applySize(); lastTune = t;
         } else if (emaDt < 12.5 && quality.scale < 1) {
           quality.scale = Math.min(1, quality.scale * 1.12);
-          quality.steps = Math.min(isMobile ? 11 : 16, quality.steps + 1);
+          quality.steps = Math.min(isMobile ? 14 : 20, quality.steps + 1);
           applySize(); lastTune = t;
         }
       }
