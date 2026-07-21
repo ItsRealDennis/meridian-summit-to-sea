@@ -3,7 +3,19 @@
 // we only smooth what the *camera* does with it. Spamming the
 // wheel can never break the world.
 
-import { WORLD, prefersReducedMotion } from './config.js';
+import { WORLD, SECTIONS, prefersReducedMotion } from './config.js';
+
+// magnetic anchors: stop near a beat and the page glides into it
+const SNAPS = (() => {
+  const pts = [0, ...SECTIONS.map((s) => (s.start + s.end) / 2), 1]
+    .sort((a, b) => a - b);
+  return pts.map((p, i) => {
+    const prev = i > 0 ? pts[i - 1] : -1;
+    const next = i < pts.length - 1 ? pts[i + 1] : 2;
+    const radius = Math.min(p - prev, next - p) * 0.42;
+    return { p, radius };
+  });
+})();
 
 export function createScroll() {
   const spacer = document.createElement('div');
@@ -25,10 +37,16 @@ export function createScroll() {
     v: 0,           // progress velocity (for audio/motion accents)
     animating: null,
   };
+  let lastInput = performance.now();
+  let lastSnapAt = -1;
 
   const read = () => { state.target = Math.min(1, Math.max(0, window.scrollY / max)); };
   window.addEventListener('scroll', read, { passive: true });
   read();
+  const noteInput = () => { lastInput = performance.now(); lastSnapAt = -1; };
+  window.addEventListener('wheel', noteInput, { passive: true });
+  window.addEventListener('touchmove', noteInput, { passive: true });
+  window.addEventListener('keydown', noteInput, { passive: true });
 
   function update(dt) {
     const reduced = prefersReducedMotion();
@@ -41,6 +59,18 @@ export function createScroll() {
       if (Math.abs(state.target - state.p) < 0.00001) state.p = state.target;
     }
     state.v = dt > 0 ? (state.p - prev) / dt : 0;
+
+    // settle into the nearest beat once the hand comes off the wheel
+    if (!reduced && !state.animating && performance.now() - lastInput > 550) {
+      for (const s of SNAPS) {
+        const d = s.p - state.target;
+        if (Math.abs(d) < s.radius && Math.abs(d) > 0.002 && lastSnapAt !== s.p) {
+          lastSnapAt = s.p;
+          goTo(s.p);
+          break;
+        }
+      }
+    }
   }
 
   // eased programmatic travel for nav anchors

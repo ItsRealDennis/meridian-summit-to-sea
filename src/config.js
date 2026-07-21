@@ -11,7 +11,7 @@ export const WORLD = {
   seaY: 0,
 
   // scroll
-  pages: 11,           // document height in viewports
+  pages: 8,            // document height in viewports
   scrollTau: 0.12,     // camera smoothing time-constant (s)
 
   // camera
