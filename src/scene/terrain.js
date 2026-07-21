@@ -80,6 +80,14 @@ export function terrainHeight(x, z) {
   return h;
 }
 
+// The hero summit is photographic now — the procedural cone ducks
+// into a foothill shelf beneath it. Applied after normalisation so
+// the island's outer flanks keep their scale.
+export function summitDuck(x, z) {
+  const r = Math.hypot(x, z);
+  return 1 - 0.74 * Math.max(0, 1 - r / 560);
+}
+
 // ---- geometry (chunked) --------------------------------------
 export async function createTerrain(onStep, highDetail = true) {
   const SIZE = 2600;
@@ -107,6 +115,16 @@ export async function createTerrain(onStep, highDetail = true) {
   const scaleY = WORLD.peakY / maxH;
   setHeightScale(scaleY);
 
+  // duck the summit region into the shelf the photographic peak
+  // stands on (post-normalisation, so the island keeps its scale)
+  for (let j = 0; j < N; j++) {
+    for (let i = 0; i < N; i++) {
+      const x = -SIZE / 2 + i * step;
+      const z = -SIZE / 2 + j * step;
+      heights[j * N + i] *= summitDuck(x, z);
+    }
+  }
+
   const eps = step;
   for (let j = 0; j < N; j++) {
     for (let i = 0; i < N; i++) {
@@ -119,10 +137,10 @@ export async function createTerrain(onStep, highDetail = true) {
       positions[idx * 3 + 2] = z;
 
       // central differences (grid where possible, fn at borders)
-      const hL = (i > 0 ? heights[idx - 1] : terrainHeight(x - eps, z)) * scaleY;
-      const hR = (i < N - 1 ? heights[idx + 1] : terrainHeight(x + eps, z)) * scaleY;
-      const hD = (j > 0 ? heights[idx - N] : terrainHeight(x, z - eps)) * scaleY;
-      const hU = (j < N - 1 ? heights[idx + N] : terrainHeight(x, z + eps)) * scaleY;
+      const hL = (i > 0 ? heights[idx - 1] : terrainHeight(x - eps, z) * summitDuck(x - eps, z)) * scaleY;
+      const hR = (i < N - 1 ? heights[idx + 1] : terrainHeight(x + eps, z) * summitDuck(x + eps, z)) * scaleY;
+      const hD = (j > 0 ? heights[idx - N] : terrainHeight(x, z - eps) * summitDuck(x, z - eps)) * scaleY;
+      const hU = (j < N - 1 ? heights[idx + N] : terrainHeight(x, z + eps) * summitDuck(x, z + eps)) * scaleY;
       const nx = (hL - hR) / (2 * eps);
       const nz = (hD - hU) / (2 * eps);
       const inv = 1 / Math.hypot(nx, 1, nz);
@@ -277,7 +295,7 @@ export async function createTerrain(onStep, highDetail = true) {
 
 // world-space ground height (valid once createTerrain has run)
 let heightScale = 1;
-export function groundHeight(x, z) { return terrainHeight(x, z) * heightScale; }
+export function groundHeight(x, z) { return terrainHeight(x, z) * summitDuck(x, z) * heightScale; }
 export function setHeightScale(s) { heightScale = s; }
 
 const frame = () => new Promise((r) => setTimeout(r, 0));

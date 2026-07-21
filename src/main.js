@@ -97,8 +97,11 @@ async function boot() {
     const noise3D = await bakeNoise3D((f) => setProgress(0.08 + f * 0.30));
     const terrain = await createTerrain((f) => setProgress(0.38 + f * 0.42), !isMobile);
     buildClearance(groundHeight);
-    // photographic sister massifs stream in on the horizon
-    const summit = createSummit();
+    // the photographic mountain streams in; when it lands, camera
+    // clearance is re-derived against its real surface
+    const summit = createSummit((peakHeight) => {
+      buildClearance((x, z) => Math.max(groundHeight(x, z), peakHeight(x, z)));
+    });
     scene.add(summit);
     setProgress(0.80);
 
