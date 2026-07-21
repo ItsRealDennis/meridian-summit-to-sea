@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MERIDIAN — From Summit to Sea</title>
+  <meta name="description" content="Meridian is a global commodities group. Trading, Capital, Maritime, Energy — one continuous descent from summit to sea.">
+  <meta name="theme-color" content="#0b1016">
+  <meta property="og:title" content="MERIDIAN — From Summit to Sea">
+  <meta property="og:description" content="A global commodities group. One continuous descent: summit, cloud, open sea.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Meridian Group">
+  <meta property="og:image" content="assets/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MERIDIAN — From Summit to Sea">
+  <meta name="twitter:description" content="A global commodities group. One continuous descent: summit, cloud, open sea.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preload" href="fonts/jost-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/cormorant-garamond-300-italic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#contact" data-goto="0.89">Skip to contact</a>
+
+  <!-- ══ Loader ══ -->
+  <div id="loader" aria-hidden="false">
+    <div class="loader-inner">
+      <div class="loader-mark">MERIDIAN</div>
+      <div class="loader-line"><span id="loader-fill"></span></div>
+      <div class="loader-meta">
+        <span id="loader-pct">00</span>
+        <span class="loader-note">PREPARING THE DESCENT</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 3D stage ══ -->
+  <canvas id="stage" aria-hidden="true"></canvas>
+  <div id="fallback" hidden>
+    <p>MERIDIAN — a global commodities group.<br>
+    This experience needs WebGL. The words below still stand.</p>
+  </div>
+
+  <!-- ══ Fixed chrome ══ -->
+  <header id="nav" aria-label="Primary">
+    <a class="nav-mark" href="#top" data-goto="0">MERIDIAN<span class="nav-mark-sub">GROUP</span></a>
+    <nav class="nav-links" aria-label="Divisions">
+      <a href="#trading"  data-goto="0.315">Trading</a>
+      <a href="#capital"  data-goto="0.375">Capital</a>
+      <a href="#maritime" data-goto="0.435">Maritime</a>
+      <a href="#energy"   data-goto="0.49">Energy</a>
+      <a href="#contact"  data-goto="0.88">Contact</a>
+    </nav>
+    <div class="nav-right">
+      <button id="sound-toggle" aria-pressed="false" title="Toggle sound (M)">
+        <span class="st-label">SOUND</span>
+        <span class="st-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      </button>
+      <button id="menu-toggle" aria-expanded="false" aria-controls="menu">MENU</button>
+    </div>
+  </header>
+
+  <!-- Mobile menu -->
+  <div id="menu" aria-hidden="true">
+    <nav aria-label="Menu">
+      <a href="#trading"  data-goto="0.315"><i>01</i>Trading</a>
+      <a href="#capital"  data-goto="0.375"><i>02</i>Capital</a>
+      <a href="#maritime" data-goto="0.435"><i>03</i>Maritime</a>
+      <a href="#energy"   data-goto="0.49"><i>04</i>Energy</a>
+      <a href="#contact"  data-goto="0.88"><i>—</i>Contact</a>
+    </nav>
+  </div>
+
+  <!-- Altimeter instrument -->
+  <div id="instrument" aria-hidden="true">
+    <div class="inst-ruler"></div>
+    <div class="inst-read">
+      <span id="inst-value">8 848</span>
+      <span id="inst-unit">M</span>
+    </div>
+    <div class="inst-tag" id="inst-tag">ALTITUDE</div>
+  </div>
+
+  <!-- Scroll cue -->
+  <div id="cue" aria-hidden="true">
+    <span class="cue-text">BEGIN THE DESCENT</span>
+    <span class="cue-line"><i></i></span>
+  </div>
+
+  <!-- ══ Story layer ══ -->
+  <main id="story">
+    <p class="sr-only">Meridian is a fictional global commodities group with four
+    divisions — Trading, Capital, Maritime and Energy — presented as a
+    cinematic scroll from a mountain summit down to the open sea. All
+    section text below appears progressively as you scroll.
+    Contact: desk@meridian.example.</p>
+    <section class="s" id="top" data-act="1" aria-label="Meridian">
+      <p class="over reveal">MERIDIAN GROUP&ensp;·&ensp;EST. 1987&ensp;·&ensp;GENEVA — SINGAPORE — HOUSTON</p>
+      <h1 class="wordmark reveal" aria-label="Meridian"><span>M</span><span>E</span><span>R</span><span>I</span><span>D</span><span>I</span><span>A</span><span>N</span></h1>
+      <p class="tagline serif reveal">From summit to sea.</p>
+    </section>
+
+    <section class="s" id="mission" aria-label="Mission">
+      <h2 class="statement serif reveal">The world runs on<br>what moves quietly.</h2>
+      <p class="sub reveal">We source, finance, carry and power the essential —<br class="bp">metals, minerals, energy — across forty markets, without noise.</p>
+    </section>
+
+    <section class="s div-s" id="trading" aria-label="Meridian Trading">
+      <p class="div-no reveal">01</p>
+      <h2 class="div-name reveal">TRADING</h2>
+      <p class="div-line serif reveal">Physical flows, priced with discipline.</p>
+      <p class="div-stat reveal"><b>412 Mt</b> moved in 2025</p>
+    </section>
+
+    <section class="s div-s" id="capital" aria-label="Meridian Capital">
+      <p class="div-no reveal">02</p>
+      <h2 class="div-name reveal">CAPITAL</h2>
+      <p class="div-line serif reveal">Patient capital for impatient markets.</p>
+      <p class="div-stat reveal"><b>$9.4 bn</b> deployed across the cycle</p>
+    </section>
+
+    <section class="s div-s" id="maritime" aria-label="Meridian Maritime">
+      <p class="div-no reveal">03</p>
+      <h2 class="div-name reveal">MARITIME</h2>
+      <p class="div-line serif reveal">Seventy-one vessels. One standard.</p>
+      <p class="div-stat reveal"><b>2.6M dwt</b> at sea this morning</p>
+    </section>
+
+    <section class="s div-s" id="energy" aria-label="Meridian Energy">
+      <p class="div-no reveal">04</p>
+      <h2 class="div-name reveal">ENERGY</h2>
+      <p class="div-line serif reveal">Fuelling the transition, not the headlines.</p>
+      <p class="div-stat reveal"><b>18 GWh</b> of storage in development</p>
+    </section>
+
+    <section class="s" id="seam" data-ink="dark" aria-label="The seam">
+      <p class="seam-line reveal">EVERYTHING ESSENTIAL CROSSES THIS LINE</p>
+    </section>
+
+    <section class="s" id="below" aria-label="Below the weather">
+      <h2 class="statement serif reveal">Below the weather,<br>the work goes on.</h2>
+      <p class="sub reveal">Around the clock, around the earth —<br class="bp">the essential keeps its schedule.</p>
+    </section>
+
+    <section class="s" id="closing" aria-label="Closing">
+      <h2 class="statement serif reveal">Quiet power<br>is still power.</h2>
+    </section>
+
+    <section class="s" id="contact" aria-label="Contact">
+      <p class="over reveal">MERIDIAN GROUP</p>
+      <h2 class="statement serif reveal">Put the world’s<br>weight in motion.</h2>
+      <a class="cta reveal" href="mailto:desk@meridian.example">SPEAK WITH MERIDIAN</a>
+    </section>
+
+  </main>
+
+  <footer class="s" id="footer" aria-label="Footer">
+      <div class="foot-top">
+        <p class="foot-mark">MERIDIAN</p>
+        <p class="foot-tag serif">From summit to sea.</p>
+      </div>
+      <div class="foot-cols">
+        <div>
+          <h3>DIVISIONS</h3>
+          <a href="#trading" data-goto="0.315">Trading</a>
+          <a href="#capital" data-goto="0.375">Capital</a>
+          <a href="#maritime" data-goto="0.435">Maritime</a>
+          <a href="#energy" data-goto="0.49">Energy</a>
+        </div>
+        <div>
+          <h3>OFFICES</h3>
+          <span>Geneva</span><span>Singapore</span><span>Houston</span><span>Rotterdam</span>
+        </div>
+        <div>
+          <h3>CONTACT</h3>
+          <a href="mailto:desk@meridian.example">desk@meridian.example</a>
+          <span>+41 22 000 00 00</span>
+        </div>
+      </div>
+      <div class="foot-base">
+        <span>43°17′N&ensp;9°02′W</span>
+        <span>© MMXXVI MERIDIAN GROUP — A FICTIONAL COMPANY</span>
+        <button id="to-top" data-goto="0">RETURN TO THE SUMMIT ↑</button>
+      </div>
+    </footer>
+
+  <div id="cursor" aria-hidden="true"></div>
+
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+  <script type="module" src="src/main.js"></script>
+  <noscript><style>#loader{display:none}</style><p style="position:fixed;inset:0;display:grid;place-items:center;background:#0b1016;color:#e8e4da;font-family:serif;text-align:center;padding:2rem">MERIDIAN — a global commodities group.<br>Enable JavaScript for the full descent.</p></noscript>
+</body>
+</html>
