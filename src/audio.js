@@ -7,7 +7,7 @@
 // → the horn → the sea.
 
 export function createAudio() {
-  let ctx = null, on = false, built = false;
+  let ctx = null, on = false, built = false, userTouched = false;
   const g = {}; // gain nodes
   let windBP, breathLP, lastHornAt = -1e9, hornArmed = { seam: true, vessel: true };
   let master;
@@ -170,6 +170,7 @@ export function createAudio() {
   };
 
   function toggle() {
+    userTouched = true;
     if (!ctx) {
       try {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -194,5 +195,33 @@ export function createAudio() {
     else if (on) ctx.resume();
   });
 
-  return { toggle, update, get on() { return on; } };
+  // Sound is meant to be on. Autoplay policy permitting, start at once;
+  // otherwise the first real gesture opens the air. The nav toggle and
+  // the M key still silence it at will.
+  function autoEnable(cb) {
+    const events = ['pointerdown', 'keydown', 'touchend'];
+    const cleanup = () => events.forEach((e) => removeEventListener(e, handler, true));
+    const check = () => {
+      if (on && ctx && ctx.state === 'running') { cb(true); cleanup(); return true; }
+      return false;
+    };
+    const attempt = () => {
+      if (!on) { const ok = toggle(); userTouched = false; if (!ok) return false; }
+      userTouched = false;
+      ctx.resume().then(check).catch(() => {});
+      return check();
+    };
+    const handler = (e) => {
+      // once a human has spoken (toggle or M), their choice stands
+      if (userTouched) { cleanup(); return; }
+      // the sound toggle owns its own click — never double-toggle it
+      if (e.target && e.target.closest && e.target.closest('#sound-toggle')) return;
+      if (on && ctx) { ctx.resume().then(check).catch(() => {}); }
+      else attempt();
+    };
+    attempt();
+    events.forEach((e) => addEventListener(e, handler, { capture: true, passive: true }));
+  }
+
+  return { toggle, update, autoEnable, get on() { return on; } };
 }

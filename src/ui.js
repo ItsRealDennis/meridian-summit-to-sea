@@ -99,6 +99,7 @@ export function createUI(scroll, audio) {
     soundBtn.setAttribute('aria-pressed', String(on));
   }
   soundBtn.addEventListener('click', toggleSound);
+  audio.autoEnable((on) => soundBtn.setAttribute('aria-pressed', String(on)));
 
   // ── custom cursor (pointer devices only) ──
   const cursor = document.getElementById('cursor');
